@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loan Approval Predictor</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+    body {
+  background: linear-gradient(135deg, #e0f7fa, #e3f2fd);
+  font-family: "Poppins", sans-serif;
+}
+
+.card {
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+  </style>
+</head>
+<body class="flex items-center justify-center p-6">
+  <div class="card max-w-xl w-full shadow-2xl rounded-2xl p-8 border border-gray-200 transition-all duration-300">
+    <body class="flex items-center justify-center p-6 mt-16">
+
+    <h1 class="text-4xl font-extrabold text-center text-gray-900 mb-3 tracking-tight">
+      Loan Approval Predictor
+    </h1>
+    <p class="text-center text-gray-600 mb-8">
+      Enter the five financial parameters below to assess loan eligibility.
+    </p>
+
+    <form id="predictionForm" class="space-y-6">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+    
+    <!-- Married -->
+    <div>
+      <label for="married" class="text-sm font-medium text-gray-700">Married (0 = No, 1 = Yes)</label>
+      <input type="number" step="0.01" id="married" name="married" min="0" max="1" required
+             class="w-full mt-1 border-gray-300 rounded-xl p-3 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+    </div>
+
+    <!-- Applicant Income -->
+    <div>
+      <label for="income" class="text-sm font-medium text-gray-700">Applicant Income</label>
+      <input type="number" step="0.01" id="income" name="income" required
+             class="w-full mt-1 border-gray-300 rounded-xl p-3 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+    </div>
+
+    <!-- Education -->
+    <div>
+      <label for="education" class="text-sm font-medium text-gray-700">Education (0 = Not Graduate, 1 = Graduate)</label>
+      <input type="number" step="0.01" id="education" name="education" min="0" max="1" required
+             class="w-full mt-1 border-gray-300 rounded-xl p-3 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+    </div>
+
+    <!-- Loan Amount -->
+    <div>
+      <label for="loan" class="text-sm font-medium text-gray-700">Loan Amount</label>
+      <input type="number" step="0.01" id="loan" name="loan" required
+             class="w-full mt-1 border-gray-300 rounded-xl p-3 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+    </div>
+
+    <!-- Credit History -->
+    <div class="sm:col-span-2">
+      <label for="credit" class="text-sm font-medium text-gray-700">Credit History (0 or 1)</label>
+      <input type="number" step="0.01" id="credit" name="credit" min="0" max="1" required
+             class="w-full mt-1 border-gray-300 rounded-xl p-3 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+    </div>
+  </div>
+
+  <button type="submit" id="submitButton" 
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-md transition transform hover:-translate-y-0.5 duration-200 disabled:opacity-50">
+    Predict Loan Status
+  </button>
+</form>
+
+
+    <div id="resultContainer" class="mt-8 hidden transition-all duration-300">
+      <div id="loadingIndicator" class="flex justify-center items-center text-blue-600 font-medium hidden">
+        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+        </svg>
+        Processing your prediction...
+      </div>
+      <div id="predictionResult" class="text-center mt-6"></div>
+      <div id="errorMessage" class="hidden text-center mt-4 bg-red-100 text-red-700 font-medium p-3 rounded-xl"></div>
+    </div>
+  </div>
+
+  <script>
+  document.getElementById('predictionForm').addEventListener('submit', async function (event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const submitButton = document.getElementById('submitButton');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const resultContainer = document.getElementById('resultContainer');
+    const predictionResult = document.getElementById('predictionResult');
+    const errorMessage = document.getElementById('errorMessage');
+
+    // Reset UI state
+    predictionResult.innerHTML = '';
+    errorMessage.classList.add('hidden');
+    resultContainer.classList.remove('hidden');
+    loadingIndicator.classList.remove('hidden');
+    submitButton.disabled = true;
+    submitButton.innerHTML = '⏳ Predicting...';
+
+   const data = {
+  x1: parseFloat(form.married.value),
+  x2: parseFloat(form.income.value),
+  x3: parseFloat(form.education.value),
+  x4: parseFloat(form.loan.value),
+  x5: parseFloat(form.credit.value),
+};
+
+
+    const apiUrl = 'http://127.0.0.1:8000/predict/';
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      const result = await response.json();
+
+      loadingIndicator.classList.add('hidden');
+      submitButton.disabled = false;
+      submitButton.innerHTML = '🔍 Predict Loan Status';
+
+      if (result.prediction !== undefined) {
+        const isApproved = result.prediction === 1;
+        const statusText = isApproved ? '✅ Loan APPROVED' : '❌ Loan REJECTED';
+        const statusClass = isApproved
+          ? 'bg-green-100 text-green-800 border-green-400'
+          : 'bg-red-100 text-red-800 border-red-400';
+        const glowClass = isApproved ? 'animate-pulse-green' : 'animate-pulse-red';
+
+        predictionResult.innerHTML = `
+          <div class="border-4 ${statusClass} ${glowClass} rounded-2xl py-6 px-4 text-2xl font-bold 
+                      shadow-inner flex items-center justify-center gap-3 transition-all duration-500">
+            ${statusText}
+          </div>
+        `;
+
+        // Optional: auto-scroll to result
+        predictionResult.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        throw new Error(result.error || 'Unexpected response format');
+      }
+
+    } catch (error) {
+      console.error('Prediction error:', error);
+      loadingIndicator.classList.add('hidden');
+      submitButton.disabled = false;
+      submitButton.innerHTML = '🔁 Try Again';
+      errorMessage.textContent = '⚠️ Unable to connect to backend. Please ensure FastAPI is running.';
+      errorMessage.classList.remove('hidden');
+    }
+  });
+
+  // Optional: add soft pulse animations
+  const style = document.createElement('style');
+  style.innerHTML = `
+    @keyframes pulse-green {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+      50% { box-shadow: 0 0 20px 10px rgba(16, 185, 129, 0.2); }
+    }
+    @keyframes pulse-red {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 20px 10px rgba(239, 68, 68, 0.2); }
+    }
+    .animate-pulse-green { animation: pulse-green 2s infinite; }
+    .animate-pulse-red { animation: pulse-red 2s infinite; }
+  `;
+  document.head.appendChild(style);
+</script>
+
+  <style>
+    @keyframes fade-in {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.4s ease-out;
+    }
+
+    @keyframes slide-up {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.card {
+  animation: slide-up 0.8s ease-out;
+}
+
+    
+  </style>
+</body>
+</html>
